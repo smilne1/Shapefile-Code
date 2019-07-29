@@ -1,0 +1,64 @@
+library(plyr)
+library(raster)
+library(rgdal)
+
+getwd()
+setwd("C:/Users/r03sm16/Documents/TA.FILES")
+
+CAO <- raster("CAO_ACD_30m_unmasked.tif")
+UNDP.E<- raster("UNDP.Elevation.tif")
+
+summary(files)
+
+files = list.files("C:/Users/r03sm16/Documents/TA.FILES",pattern="*.shp$")
+files<-as.list(files)
+##
+files_shp<-lapply(files, function(i) {
+  readOGR(i)
+})
+
+##reproject shapefiles onto CAO
+fil_shpproj<-lapply(files_shp, function(i) {
+  spTransform(i, crs(CAO))
+})
+
+## extraxct raster values into shp files
+files_acd<-lapply(fil_shpproj, function(x) {
+  raster::intersect(CAO, x)
+  
+})
+
+##reproject shapefiles onto Elevation
+fil_shpproj.ele<-lapply(files_shp, function(i) {
+  spTransform(i, crs(UNDP.E))
+})
+
+## extraxct raster values into shp files
+files_ele<-lapply(fil_shpproj.ele, function(x) {
+  raster::intersect(UNDP.E, x)
+  
+})
+
+##area of each shapefile
+files_area<-lapply(fil_shpproj, function(i) {
+ (rgeos::gArea(i)/ 1e6 )
+})
+
+#write.csv
+lapply(files_shp, names) %>% 
+  rbind() %>% 
+  t() %>% 
+  as.data.frame(files_acd) %>% 
+  rename(.,code = `.`) ->
+  df_shp
+
+###
+shnames<-as.list(df_shp)
+#
+mapply(function(x, y){
+  
+  write.csv(x,y)
+  
+}, x=files_acd, y=shnames)
+  
+  
